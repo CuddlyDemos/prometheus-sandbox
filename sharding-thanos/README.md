@@ -21,7 +21,7 @@ To run this you'll need to the following
 
 2. Deploy Prometheus and Thanos.
     ```sh
-    make prom
+    make deploy
     ```
 
 3. Deploy demo application.
