@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+spec:
+  replicas: 6
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: demo
+  template:
+    metadata:
+      labels:
+        app: demo
+    spec:
+      containers:
+      - name: demo
+        image: quay.io/prometheus/node-exporter:v1.1.1
+        args:
+        - --collector.disable-defaults
+        - --web.disable-exporter-metrics
+        - --collector.uname
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9100
+          name: http
+          protocol: TCP

@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    scraper: primary
+  name: demo-app
+spec:
+  groups:
+  - name: demo-app.rules
+    rules:
+    - alert: ExampleAlert
+      expr: count(node_uname_info{nodename=~"demo.*"}) > 5
+      for: 1m
+      labels:
+        severity: page
+      annotations:
+        summary: Too many pods named 'demo'

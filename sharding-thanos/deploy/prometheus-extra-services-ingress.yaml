@@ -1,0 +1,97 @@
+# Create service and ingress for each shard for testing.
+# Not needed in production.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-shard-0
+spec:
+  ports:
+  - name: web
+    port: 9090
+    protocol: TCP
+    targetPort: web
+  selector:
+    operator.prometheus.io/shard: "0"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-shard-1
+spec:
+  ports:
+  - name: web
+    port: 9090
+    protocol: TCP
+    targetPort: web
+  selector:
+    operator.prometheus.io/shard: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-shard-2
+spec:
+  ports:
+  - name: web
+    port: 9090
+    protocol: TCP
+    targetPort: web
+  selector:
+    operator.prometheus.io/shard: "2"
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: prometheus-shard-0
+spec:
+  rules:
+  - host: shard-0.localhost
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: prometheus-shard-0
+          servicePort: 9090
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: prometheus-shard-1
+spec:
+  rules:
+  - host: shard-1.localhost
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: prometheus-shard-1
+          servicePort: 9090
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: prometheus-shard-2
+spec:
+  rules:
+  - host: shard-2.localhost
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: prometheus-shard-2
+          servicePort: 9090
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: ruler
+spec:
+  rules:
+  - host: ruler.localhost
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: thanos-ruler-operated
+          servicePort: 10902

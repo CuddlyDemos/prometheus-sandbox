@@ -1,0 +1,12 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: primary
+spec:
+  shards: 2
+  serviceAccountName: prometheus
+  serviceMonitorSelector:
+    matchLabels:
+      scraper: primary
+  thanos:
+    version: v0.18.0

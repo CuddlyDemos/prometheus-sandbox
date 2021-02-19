@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: thanos-query
+  name: thanos-query
+spec:
+  ports:
+  - name: http
+    port: 10902
+    targetPort: http
+  selector:
+    app: thanos-query
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: thanos-query
+spec:
+  rules:
+  - host: thanos.localhost
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: thanos-query
+          servicePort: 10902
