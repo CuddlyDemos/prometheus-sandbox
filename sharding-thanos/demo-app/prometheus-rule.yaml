@@ -8,8 +8,9 @@ spec:
   groups:
   - name: demo-app.rules
     rules:
-    - alert: ExampleAlert
-      expr: count(node_uname_info{nodename=~"demo.*"}) > 5
+    - alert: TooMany404s
+      expr: |
+        sum(http_requests_total{status="404",service="demo"}) > (sum(http_requests_total{service="demo"})*.1)
       for: 1m
       labels:
         severity: page
