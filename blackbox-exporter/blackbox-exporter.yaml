@@ -1,0 +1,230 @@
+---
+# Source: prometheus-blackbox-exporter/templates/podsecuritypolicy.yaml
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: bbe-demo-prometheus-blackbox-exporter-psp
+  labels:
+    app.kubernetes.io/name: prometheus-blackbox-exporter
+    app.kubernetes.io/instance: bbe-demo
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: prometheus-blackbox-exporter-4.10.2
+spec:
+  # Prevents running in privileged mode
+  privileged: false
+  # Required to prevent escalations to root.
+  allowPrivilegeEscalation: false
+  volumes:
+    - configMap
+    - secret
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: 'MustRunAs'
+    ranges:
+      # Forbid adding the root group.
+      - min: 1
+        max: 65535
+  fsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      # Forbid adding the root group.
+      - min: 1
+        max: 65535
+  readOnlyRootFilesystem: true
+---
+# Source: prometheus-blackbox-exporter/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bbe-demo-prometheus-blackbox-exporter
+  labels:
+    app.kubernetes.io/name: prometheus-blackbox-exporter
+    app.kubernetes.io/instance: bbe-demo
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: prometheus-blackbox-exporter-4.10.2
+  annotations:
+    {}
+---
+# Source: prometheus-blackbox-exporter/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bbe-demo-prometheus-blackbox-exporter
+  labels:
+    app.kubernetes.io/name: prometheus-blackbox-exporter
+    app.kubernetes.io/instance: bbe-demo
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: prometheus-blackbox-exporter-4.10.2
+data:
+  blackbox.yaml: |
+    modules:
+      http_2xx:
+        http:
+          no_follow_redirects: false
+          preferred_ip_protocol: ip4
+          valid_http_versions:
+          - HTTP/1.1
+          - HTTP/2.0
+          valid_status_codes:
+          - 200
+          - 404
+        prober: http
+        timeout: 5s
+      tls_connect:
+        prober: tcp
+        tcp:
+          tls: true
+        timeout: 5s
+---
+# Source: prometheus-blackbox-exporter/templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/name: prometheus-blackbox-exporter
+    app.kubernetes.io/instance: bbe-demo
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: prometheus-blackbox-exporter-4.10.2
+  name: bbe-demo-prometheus-blackbox-exporter
+rules:
+  - apiGroups:
+    - policy
+    resources:
+    - podsecuritypolicies
+    resourceNames:
+    - bbe-demo-prometheus-blackbox-exporter-psp
+    verbs:
+    - use
+---
+# Source: prometheus-blackbox-exporter/templates/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: prometheus-blackbox-exporter
+    app.kubernetes.io/instance: bbe-demo
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: prometheus-blackbox-exporter-4.10.2
+  name: bbe-demo-prometheus-blackbox-exporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bbe-demo-prometheus-blackbox-exporter
+subjects:
+  - kind: ServiceAccount
+    name: bbe-demo-prometheus-blackbox-exporter
+---
+# Source: prometheus-blackbox-exporter/templates/service.yaml
+kind: Service
+apiVersion: v1
+metadata:
+  name: bbe-demo-prometheus-blackbox-exporter
+  labels:
+    app.kubernetes.io/name: prometheus-blackbox-exporter
+    app.kubernetes.io/instance: bbe-demo
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: prometheus-blackbox-exporter-4.10.2
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9115
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: prometheus-blackbox-exporter
+    app.kubernetes.io/instance: bbe-demo
+---
+# Source: prometheus-blackbox-exporter/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bbe-demo-prometheus-blackbox-exporter
+  labels:
+    app.kubernetes.io/name: prometheus-blackbox-exporter
+    app.kubernetes.io/instance: bbe-demo
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: prometheus-blackbox-exporter-4.10.2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus-blackbox-exporter
+      app.kubernetes.io/instance: bbe-demo
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prometheus-blackbox-exporter
+        app.kubernetes.io/instance: bbe-demo
+        app.kubernetes.io/managed-by: Helm
+        helm.sh/chart: prometheus-blackbox-exporter-4.10.2
+      annotations:
+        checksum/config: 25cd2f8ea74003e0f6b8310120e63ede54dcd88a775c1c983da413b6b521e511
+    spec:
+      serviceAccountName: bbe-demo-prometheus-blackbox-exporter
+
+      restartPolicy: Always
+      containers:      
+        - name: blackbox-exporter
+          image: "prom/blackbox-exporter:v0.18.0"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          env:
+          args:
+            - "--config.file=/config/blackbox.yaml"
+          resources:
+            {}
+          ports:
+            - containerPort: 9115
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          volumeMounts:
+            - mountPath: /config
+              name: config
+      volumes:      
+        - name: config
+          configMap:
+            name: bbe-demo-prometheus-blackbox-exporter
+---
+# Source: prometheus-blackbox-exporter/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: bbe-demo-prometheus-blackbox-exporter
+  labels:
+    app.kubernetes.io/name: prometheus-blackbox-exporter
+    app.kubernetes.io/instance: bbe-demo
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: prometheus-blackbox-exporter-4.10.2
+  annotations:
+    {}
+spec:
+  rules:
+    - host: bbe.localhost
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: bbe-demo-prometheus-blackbox-exporter
+              servicePort: 9115

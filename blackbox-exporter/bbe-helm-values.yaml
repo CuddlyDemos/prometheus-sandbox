@@ -1,0 +1,19 @@
+---
+ingress:
+  enabled: true
+  hosts:
+  - bbe.localhost
+config:
+  modules:
+    http_2xx:
+      prober: http
+      timeout: 5s
+      http:
+        valid_status_codes:
+        - 200
+        - 404
+    tls_connect:
+      prober: tcp
+      timeout: 5s
+      tcp:
+        tls: true
